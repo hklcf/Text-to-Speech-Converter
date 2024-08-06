@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字轉語音</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .range-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 15px;
+            border-radius: 5px;
+            background: #d3d3d3;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        .range-slider:hover {
+            opacity: 1;
+        }
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+        }
+        .range-slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">文字轉語音</h1>
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <textarea id="text-input" class="form-control mb-3" rows="5" placeholder="請輸入要轉換的文字"></textarea>
+                <div class="mb-3">
+                    <label for="language-select" class="form-label">選擇語言:</label>
+                    <select id="language-select" class="form-select"></select>
+                </div>
+                <div class="mb-3">
+                    <label for="rate-slider" class="form-label">語速: <span id="rate-value">1</span></label>
+                    <input type="range" class="range-slider" id="rate-slider" min="0.5" max="2" step="0.1" value="1">
+                </div>
+                <div class="mb-3">
+                    <label for="pitch-slider" class="form-label">音調: <span id="pitch-value">1</span></label>
+                    <input type="range" class="range-slider" id="pitch-slider" min="0.5" max="2" step="0.1" value="1">
+                </div>
+                <div class="mb-3">
+                    <button id="play-btn" class="btn btn-primary me-2">播放</button>
+                    <button id="pause-btn" class="btn btn-secondary me-2" style="display: none;">暫停</button>
+                    <button id="resume-btn" class="btn btn-info me-2" style="display: none;">繼續</button>
+                    <button id="stop-btn" class="btn btn-danger me-2" style="display: none;">停止</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const textInput = document.getElementById('text-input');
+            const languageSelect = document.getElementById('language-select');
+            const rateSlider = document.getElementById('rate-slider');
+            const pitchSlider = document.getElementById('pitch-slider');
+            const playBtn = document.getElementById('play-btn');
+            const pauseBtn = document.getElementById('pause-btn');
+            const resumeBtn = document.getElementById('resume-btn');
+            const stopBtn = document.getElementById('stop-btn');
+            const rateValue = document.getElementById('rate-value');
+            const pitchValue = document.getElementById('pitch-value');
+
+            let speech = new SpeechSynthesisUtterance();
+            let voices = [];
+            let currentChunk = 0;
+            let textChunks = [];
+
+            const populateVoiceList = () => {
+                voices = speechSynthesis.getVoices();
+                languageSelect.innerHTML = voices
+                    .map((voice, i) => `<option data-lang="${voice.lang}" data-name="${voice.name}">${voice.name} (${voice.lang})</option>`)
+                    .join('');
+            };
+
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+
+            const updateSliderValue = (slider, value) => {
+                document.getElementById(`${slider.id.split('-')[0]}-value`).textContent = value;
+            };
+
+            const splitText = (text, maxLength = 200) => {
+                const words = text.split(' ');
+                const chunks = [];
+                let currentChunk = '';
+
+                for (const word of words) {
+                    if ((currentChunk + word).length <= maxLength) {
+                        currentChunk += (currentChunk ? ' ' : '') + word;
+                    } else {
+                        chunks.push(currentChunk);
+                        currentChunk = word;
+                    }
+                }
+                if (currentChunk) {
+                    chunks.push(currentChunk);
+                }
+                return chunks;
+            };
+
+            const speakNextChunk = () => {
+                if (currentChunk < textChunks.length) {
+                    speech.text = textChunks[currentChunk];
+                    speechSynthesis.speak(speech);
+                    currentChunk++;
+                } else {
+                    stopSpeaking();
+                }
+            };
+
+            const startSpeaking = () => {
+                const text = textInput.value;
+                if (text) {
+                    textChunks = splitText(text);
+                    currentChunk = 0;
+                    updateSpeechSettings();
+                    speakNextChunk();
+                    updateButtons('playing');
+                }
+            };
+
+            const pauseSpeaking = () => {
+                speechSynthesis.pause();
+                updateButtons('paused');
+            };
+
+            const resumeSpeaking = () => {
+                speechSynthesis.resume();
+                updateButtons('playing');
+            };
+
+            const stopSpeaking = () => {
+                speechSynthesis.cancel();
+                updateButtons('stopped');
+            };
+
+            const updateSpeechSettings = () => {
+                const selectedOption = languageSelect.selectedOptions[0];
+                speech.voice = voices.find(voice => voice.name === selectedOption.getAttribute('data-name'));
+                speech.lang = selectedOption.getAttribute('data-lang');
+                speech.rate = parseFloat(rateSlider.value);
+                speech.pitch = parseFloat(pitchSlider.value);
+            };
+
+            const updateButtons = (state) => {
+                const buttonStates = {
+                    playing: { play: false, pause: true, resume: false, stop: true },
+                    paused: { play: false, pause: false, resume: true, stop: true },
+                    stopped: { play: true, pause: false, resume: false, stop: false }
+                };
+
+                Object.entries(buttonStates[state]).forEach(([button, visible]) => {
+                    document.getElementById(`${button}-btn`).style.display = visible ? 'inline-block' : 'none';
+                });
+            };
+
+            playBtn.addEventListener('click', startSpeaking);
+            pauseBtn.addEventListener('click', pauseSpeaking);
+            resumeBtn.addEventListener('click', resumeSpeaking);
+            stopBtn.addEventListener('click', stopSpeaking);
+
+            [rateSlider, pitchSlider].forEach(slider => {
+                slider.addEventListener('input', (e) => {
+                    updateSliderValue(slider, e.target.value);
+                    if (speechSynthesis.speaking) {
+                        stopSpeaking();
+                        startSpeaking();
+                    }
+                });
+            });
+
+            speech.onend = speakNextChunk;
+        });
+    </script>
+</body>
+</html>
