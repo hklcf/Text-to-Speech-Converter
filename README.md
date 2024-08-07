@@ -9,6 +9,10 @@ This project is a simple web-based Text-to-Speech (TTS) application that allows 
 - Play, pause, resume, and stop speech playback
 - Responsive design for both desktop and mobile devices
 
+## Demo
+
+[Live Demo](https://hklcf.github.io/text-to-speech-converter/)
+
 ## Technologies Used
 
 - HTML5
