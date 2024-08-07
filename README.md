@@ -34,8 +34,8 @@ This application uses the Web Speech API, which is supported by most modern brow
 No installation is required. Simply clone the repository and open the `index.html` file in your web browser.
 
 ```
-git clone https://github.com/your-username/text-to-speech-web-app.git
-cd text-to-speech-web-app
+git clone https://github.com/hklcf/Text-to-Speech-Converter.git
+cd Text-to-Speech-Converter
 ```
 
 Then open `index.html` in your preferred web browser.
